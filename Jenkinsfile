@@ -1,21 +1,28 @@
 pipeline{
         agent any
         stages{
-            stage('Build Image'){
+            stage('clone git file'){
                 steps{
-                    sh "sudo docker build -t chaperoo ."
+                    sh 'if [! -d "chaperootodo_client"]
+                        then 
+                          git clone https://gitlab.com/qacdevops/chaperootodo_client
+                        fi'
                 }
             }
-            stage('Clean'){
+            stage('install docker'){
                 steps{
-                    sh label: '', script: '''if [ "$(sudo docker ps -aq -f name=chaptodo)" ]; then
-                        sudo docker rm -f chaptodo
-                    fi'''
+                    sh 'curl https://get.docker.com | sudo bash'
+                    sh 'sudo usermod -ag docker jenkins'
+                    sh 'sudo apt update'
+                    sh 'sudo apt install -y curl jq'
+                    sh 'version=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r ".tag_name")'
+                    sh 'sudo curl -L "https://github.com/docker/compose/releases/download/${version}/docker-compose-$(uname -s)-$(uname -m)" -o/usr/local/bin/docker-compose'
+                    sh 'sudo chmod +x /usr/local/bin/docker-compose
                     }
                 }
-            stage('Run Container'){
+            stage('deploy application'){
                 steps{
-                    sh "sudo docker run -d --name chaptodo -p 80:80 chaperoo"
+                    sh "sudo docker-compose pull && sudo -E DB_PASSWORD=${DB_PASSWORD} docker-compose up -d.
                 }
             }
         }    
